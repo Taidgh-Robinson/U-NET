@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torchvision.transforms.functional as TF
 from logger_config import logger
 
+
 class PetUNet(nn.Module):
     def __init__(self):
         super(PetUNet, self).__init__()
@@ -137,4 +138,4 @@ class PetUNet(nn.Module):
         logger.debug(x.size())
         x = self.conv1x1_64LayersTo2Layers(x)
         logger.debug(x.size())
-        return x 
+        return x
