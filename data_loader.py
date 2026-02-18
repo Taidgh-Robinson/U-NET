@@ -54,7 +54,7 @@ def OxfordPetDatasetLoader(image_scale):
     )
 
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-    test_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
 
     return (train_loader, test_loader)
 
