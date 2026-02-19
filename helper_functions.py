@@ -24,6 +24,13 @@ def plot_loss(loss_array, title="Training Loss", xlabel="Iteration", ylabel="Los
 def display_image_and_mask(image, mask, filename=None):
     # Make sure tensors are CPU and NumPy
     # Select first sample from batch
+
+    if len(image.size()) == 4:
+        image = image.squeeze(0)
+
+    if len(mask.size()) == 4:
+        mask = mask.squeeze(0)
+
     if len(image.size()) == 3:
         image = image.squeeze(0)
 

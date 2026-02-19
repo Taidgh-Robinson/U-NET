@@ -14,8 +14,8 @@ import pickle
 
 
 def generate_random_crop_bounds(image, crop_size):
-    h = image.size()[1]
-    w = image.size()[2]
+    h = image.size()[2]
+    w = image.size()[3]
     crop_boundry_h = h - crop_size
     crop_boundry_w = w - crop_size
     h_boundry = randrange(0, crop_boundry_h)
@@ -43,24 +43,23 @@ def trainPetUNet():
     loss_fn = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(UNet.parameters(), lr=0.01, momentum=0.99)
     train_dataset, test_dataset = OxfordPetDatasetLoader(2)
-    for epoch in range(25):
+    for epoch in range(1):
         UNet.train()
         # Pull sample image + mask
         for image, mask in train_dataset:
             if image.size()[2] <= 572 or image.size()[3] <= 572:
                 continue
 
-            # Training in batches of 1 so can remove batch dim
-            image = image.squeeze(0).to(device)
-            mask = mask.squeeze(0).to(device)
             # Select random 572x572 section of image + corresponding part of make
             crop_boundies = generate_random_crop_bounds(image, 572)
             cropped_image = image[
+                :,
                 :,
                 crop_boundies[0][0] : crop_boundies[0][1],
                 crop_boundies[1][0] : crop_boundies[1][1],
             ]
             cropped_mask = mask[
+                :,
                 :,
                 crop_boundies[0][0] : crop_boundies[0][1],
                 crop_boundies[1][0] : crop_boundies[1][1],
@@ -79,7 +78,9 @@ def trainPetUNet():
 
             # Calculate loss between model output + centered cropped section of mask
             optimizer.zero_grad()
-            output = output.unsqueeze(0)
+            #Remove channel from center cropped mask:
+            center_cropped_mask = center_cropped_mask.squeeze(1)
+
             loss = loss_fn(output.to(device), center_cropped_mask.long().to(device))
             loss.backward()
             optimizer.step()
