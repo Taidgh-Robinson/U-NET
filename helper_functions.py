@@ -71,3 +71,15 @@ def display_image_and_mask(image, mask, filename=None):
         print(f"Saved visualization to {filename}")
     else:
         plt.show()
+
+def convert_model_output_to_values(model_output):
+    return torch.argmax(model_output, dim=1)[0]
+
+def generate_random_crop_bounds(image, crop_size):
+    h = image.size()[2]
+    w = image.size()[3]
+    crop_boundry_h = h - crop_size
+    crop_boundry_w = w - crop_size
+    h_boundry = randrange(0, crop_boundry_h)
+    w_boundry = randrange(0, crop_boundry_w)
+    return ((h_boundry, h_boundry + crop_size), (w_boundry, w_boundry + crop_size))
