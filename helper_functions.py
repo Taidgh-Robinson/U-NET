@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import torch
+from random import randrange
 
 
 def plot_loss(loss_array, title="Training Loss", xlabel="Iteration", ylabel="Loss"):

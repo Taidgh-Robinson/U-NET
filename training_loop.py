@@ -4,7 +4,6 @@
 # Calculate loss between model output + centered cropped section of mask
 from data_loader import OxfordPetDatasetLoader
 from models import PetUNet
-from random import randrange
 from helper_functions import display_image_and_mask, convert_model_output_to_values, generate_random_crop_bounds
 import torchvision.transforms.functional as TF
 import torch.optim as optim
@@ -99,13 +98,12 @@ def trainPetUNet():
 
 def trainPetUNetSingleItem():
     losses = []
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     UNet = PetUNet().to(device)
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(UNet.parameters(), lr=0.1, momentum=0.0)
+    optimizer = torch.optim.SGD(UNet.parameters(), lr=0.1, momentum=0.90)
 
     train_dataset, test_dataset = OxfordPetDatasetLoader(2)
 
@@ -140,7 +138,7 @@ def trainPetUNetSingleItem():
     center_cropped_mask = center_cropped_mask.to(device)
     center_cropped_mask = center_cropped_mask.squeeze(1)  # remove channel
 
-    for epoch in range(1000):
+    for epoch in range(5000):
         UNet.train()
 
         # Select random 572x572 section of image + corresponding part of mask
