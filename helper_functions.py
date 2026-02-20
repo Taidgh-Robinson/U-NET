@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import torch
+import torch.nn as nn
 from random import randrange
 
 
@@ -73,14 +74,51 @@ def display_image_and_mask(image, mask, filename=None):
     else:
         plt.show()
 
+
 def convert_model_output_to_values(model_output):
     return torch.argmax(model_output, dim=1)[0]
+
 
 def generate_random_crop_bounds(image, crop_size):
     h = image.size()[2]
     w = image.size()[3]
-    crop_boundry_h = h - crop_size
-    crop_boundry_w = w - crop_size
+    crop_boundry_h = h - crop_size + 1
+    crop_boundry_w = w - crop_size + 1
     h_boundry = randrange(0, crop_boundry_h)
     w_boundry = randrange(0, crop_boundry_w)
     return ((h_boundry, h_boundry + crop_size), (w_boundry, w_boundry + crop_size))
+
+
+def mirror_pad_to_size(image, size):
+    h = image.size()[2]
+    w = image.size()[3]
+    if h >= size and w >= size:
+        return image
+
+    left, right, top, bottom = 0, 0, 0, 0
+    if h < size:
+        diff = size - h
+        diff = (diff + 1) // 2
+        top, bottom = diff, diff
+
+    if w < size:
+        diff = size - w
+        diff = (diff + 1) // 2
+        left, right = diff, diff
+
+    pad = nn.ReflectionPad2d((left, right, top, bottom))
+    return pad(image)
+
+
+def compute_class_ratio(train_loader, device):
+    total_pixels = 0
+    animal_pixels = 0
+
+    for image, mask in train_loader:
+        mask = mask.to(device)
+        mask = (mask == 1).long()
+        total_pixels += mask.numel()
+        animal_pixels += mask.sum().item()
+
+    ratio = animal_pixels / total_pixels
+    return ratio
