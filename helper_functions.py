@@ -49,8 +49,6 @@ def display_image_and_mask(image, mask, filename=None):
     else:
         mask_np = mask
 
-    print(len(image.size()))
-
     # Rescale image if normalized [-1,1]
     image_np = (image_np + 1.0) / 2.0
     image_np = image_np.clip(0, 1)
@@ -70,7 +68,7 @@ def display_image_and_mask(image, mask, filename=None):
     if filename:
         plt.savefig(filename)
         plt.close()
-        print(f"Saved visualization to {filename}")
+        logger.debug(f"Saved visualization to {filename}")
     else:
         plt.show()
 
