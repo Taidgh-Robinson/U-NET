@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 from random import randrange
-
+from logger_config import logger
 
 def plot_loss(loss_array, title="Training Loss", xlabel="Iteration", ylabel="Loss"):
     """

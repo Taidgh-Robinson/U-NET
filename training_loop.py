@@ -18,6 +18,7 @@ import numpy as np
 import random
 import torch.nn as nn
 import pickle
+from logger_config import logger
 
 # Make CUDA operations deterministic
 torch.backends.cudnn.deterministic = True
@@ -38,6 +39,21 @@ def elastic_deformation(image, mask):
 def traditional_deformation(image, mask):
     pass
 
+def dice_loss(pred, target, smooth=1):
+    # pred is raw logits [B, 2, H, W], target is [B, H, W] long
+    pred = torch.softmax(pred, dim=1)  # convert to probabilities
+    pred_fg = pred[:, 1, :, :]  # grab foreground channel probability
+    
+    target_float = target.float()
+    
+    intersection = (pred_fg * target_float).sum()
+    return 1 - (2. * intersection + smooth) / (pred_fg.sum() + target_float.sum() + smooth)
+
+# Combined loss
+def combined_loss(pred, target, device, dice_weight=0.5):
+    ce = nn.CrossEntropyLoss().to(device)(pred, target)
+    dice = dice_loss(pred, target)
+    return ce * (1 - dice_weight) + dice * dice_weight
 
 def trainPetUNet():
     losses = []
@@ -51,22 +67,22 @@ def trainPetUNet():
 
     # Punish the model for guessing Pets wrong more than we punish it for guessing background wrong
     # Image's are largly background so if we don't do this it'll just guess background for everything
-    ratio = compute_class_ratio(train_dataset, device)
-    weights = torch.tensor([1.0 / (1 - ratio), 1.0 / ratio]).to(device)
-
+    #ratio = compute_class_ratio(train_dataset, device)
+    #weights = torch.tensor([1.0 / (1 - ratio), 1.0 / ratio]).to(device)
+    #weights = torch.tensor([50.0, 1.0]).to(device)
     UNet = PetUNet().to(device)
 
-    loss_fn = nn.CrossEntropyLoss(weight=weights).to(device)
-    optimizer = optim.SGD(UNet.parameters(), lr=0.02, momentum=0.9)
+    #loss_fn = nn.CrossEntropyLoss().to(device)
+    optimizer = torch.optim.Adam(UNet.parameters(), lr=1e-4)
 
-    for epoch in range(15):
+    for epoch in range(25):
         rolling_loss = []
         UNet.train()
+        run = 0
         # Pull sample image + mask
         for image, mask in train_dataset:
             image = mirror_pad_to_size(image, 572).to(device)
             mask = mirror_pad_to_size(mask, 572).to(device)
-
             # Select random 572x572 section of image + corresponding part of mask
             crop_boundies = generate_random_crop_bounds(image, 572)
             cropped_image = image[
@@ -89,7 +105,7 @@ def trainPetUNet():
             # Oxford pets come as 1: Animal, 2: Background, 3: Border
             # Rework it so 0: Not Animal, 1: Animal
             center_cropped_mask = (center_cropped_mask == 1).long()
-
+            pet_frac = center_cropped_mask.float().mean().item()
             output = UNet(cropped_image)
 
             # Calculate loss between model output + centered cropped section of mask
@@ -97,26 +113,35 @@ def trainPetUNet():
             # Remove channel from center cropped mask:
             center_cropped_mask = center_cropped_mask.squeeze(1)
 
-            loss = loss_fn(output, center_cropped_mask)
+            loss = combined_loss(output, center_cropped_mask, device)
+            logger.info(f'Loss at current step is {loss.item()}')
             loss.backward()
             optimizer.step()
+
             losses.append(loss.item())
             rolling_loss.append(loss.item())
-
+            
+            display_image_and_mask(
+                cropped_image, center_cropped_mask, f"images/full_loop/regular-epoch-{epoch}-{run}.jpg"
+            )
+            display_image_and_mask(
+                cropped_image, convert_model_output_to_values(output), f"images/full_loop/model-epoch-{epoch}-{run}.jpg"
+            )
+            run += 1
             # print(output.size())
 
         print(
             f"Average Loss for epoch {epoch}: {sum(rolling_loss) / len(rolling_loss)}"
         )
-        torch.save(UNet.state_dict(), f"modelz/{epoch}-policy_net.pth")
+        torch.save(UNet.state_dict(), f"model_state_dicts/full_model/{epoch}-single-epoch-policy_net.pth")
 
-    with open("losses.pkl", "wb") as f:
+    with open("losses-adam.pkl", "wb") as f:
         pickle.dump(losses, f)
 
     return True
 
 
-def trainPetUNetAdam():
+def trainPetUNetSingleEpoch():
     losses = []
 
     if torch.cuda.is_available():
@@ -128,22 +153,22 @@ def trainPetUNetAdam():
 
     # Punish the model for guessing Pets wrong more than we punish it for guessing background wrong
     # Image's are largly background so if we don't do this it'll just guess background for everything
-    ratio = compute_class_ratio(train_dataset, device)
-    weights = torch.tensor([1.0 / (1 - ratio), 1.0 / ratio]).to(device)
-
+    #ratio = compute_class_ratio(train_dataset, device)
+    #weights = torch.tensor([1.0 / (1 - ratio), 1.0 / ratio]).to(device)
+    #weights = torch.tensor([50.0, 1.0]).to(device)
     UNet = PetUNet().to(device)
 
-    loss_fn = nn.CrossEntropyLoss(weight=weights).to(device)
-    optimizer = torch.optim.Adam(UNet.parameters(), lr=1e-3)
+    #loss_fn = nn.CrossEntropyLoss().to(device)
+    optimizer = torch.optim.Adam(UNet.parameters(), lr=1e-4)
 
-    for epoch in range(50):
+    for epoch in range(1):
         rolling_loss = []
         UNet.train()
+        run = 0
         # Pull sample image + mask
         for image, mask in train_dataset:
             image = mirror_pad_to_size(image, 572).to(device)
             mask = mirror_pad_to_size(mask, 572).to(device)
-
             # Select random 572x572 section of image + corresponding part of mask
             crop_boundies = generate_random_crop_bounds(image, 572)
             cropped_image = image[
@@ -166,7 +191,7 @@ def trainPetUNetAdam():
             # Oxford pets come as 1: Animal, 2: Background, 3: Border
             # Rework it so 0: Not Animal, 1: Animal
             center_cropped_mask = (center_cropped_mask == 1).long()
-
+            pet_frac = center_cropped_mask.float().mean().item()
             output = UNet(cropped_image)
 
             # Calculate loss between model output + centered cropped section of mask
@@ -174,33 +199,32 @@ def trainPetUNetAdam():
             # Remove channel from center cropped mask:
             center_cropped_mask = center_cropped_mask.squeeze(1)
 
-            loss = loss_fn(output, center_cropped_mask)
+            loss = combined_loss(output, center_cropped_mask, device)
+            logger.info(f'Loss at current step is {loss.item()}')
             loss.backward()
             optimizer.step()
+
             losses.append(loss.item())
             rolling_loss.append(loss.item())
-
-            # print(output.size())
-        if epoch % 3 == 0:
-            UNet.eval()
+            
             display_image_and_mask(
-                cropped_image, center_cropped_mask, f"regular-{epoch}.jpg"
+                cropped_image, center_cropped_mask, f"images/single_epoch/regular-epoch-{run}.jpg"
             )
-            with torch.no_grad():
-                output = UNet(cropped_image)
-                output = convert_model_output_to_values(output)
-                display_image_and_mask(cropped_image, output, f"model-epoch.jpg")
+            display_image_and_mask(
+                cropped_image, convert_model_output_to_values(output), f"images/single_epoch/model-run-{run}.jpg"
+            )
+            run += 1
+            # print(output.size())
 
         print(
             f"Average Loss for epoch {epoch}: {sum(rolling_loss) / len(rolling_loss)}"
         )
-        torch.save(UNet.state_dict(), f"modelz/{epoch}-adam-policy_net.pth")
+        torch.save(UNet.state_dict(), f"model_state_dicts/single_image_sgd/{epoch}-single-epoch-policy_net.pth")
 
     with open("losses-adam.pkl", "wb") as f:
         pickle.dump(losses, f)
 
     return True
-
 
 def trainPetUNetSingleItem():
     losses = []
@@ -261,20 +285,18 @@ def trainPetUNetSingleItem():
         losses.append(loss.item())
 
         torch.save(
-            UNet.state_dict(), f"modelz/single_image_adam/{epoch}-policy_net.pth"
+            UNet.state_dict(), f"model_state_dicts/single_image_sgd/{epoch}-policy_net.pth"
         )
+
+        display_image_and_mask(cropped_image, center_cropped_mask, f'images/single_image/regular-epoch-{epoch}.jpg')
+        output_mask = convert_model_output_to_values(output)
+        display_image_and_mask(cropped_image, output_mask, f'images/single_image/model-epoch-{epoch}.jpg')
 
     with open("losses_single_image.pkl", "wb") as f:
         pickle.dump(losses, f)
 
-    display_image_and_mask(cropped_image, center_cropped_mask)
-    output = UNet(cropped_image)
-    output_mask = convert_model_output_to_values(output)
-    print(output_mask)
-    print(output_mask.size())
-    display_image_and_mask(cropped_image, output_mask)
     return True
 
 
 if __name__ == "__main__":
-    print(trainPetUNetAdam())
+    print(trainPetUNet())
