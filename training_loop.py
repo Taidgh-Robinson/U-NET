@@ -39,21 +39,26 @@ def elastic_deformation(image, mask):
 def traditional_deformation(image, mask):
     pass
 
+
 def dice_loss(pred, target, smooth=1):
     # pred is raw logits [B, 2, H, W], target is [B, H, W] long
     pred = torch.softmax(pred, dim=1)  # convert to probabilities
     pred_fg = pred[:, 1, :, :]  # grab foreground channel probability
-    
+
     target_float = target.float()
-    
+
     intersection = (pred_fg * target_float).sum()
-    return 1 - (2. * intersection + smooth) / (pred_fg.sum() + target_float.sum() + smooth)
+    return 1 - (2.0 * intersection + smooth) / (
+        pred_fg.sum() + target_float.sum() + smooth
+    )
+
 
 # Combined loss
 def combined_loss(pred, target, device, dice_weight=0.5):
     ce = nn.CrossEntropyLoss().to(device)(pred, target)
     dice = dice_loss(pred, target)
     return ce * (1 - dice_weight) + dice * dice_weight
+
 
 def trainPetUNet():
     losses = []
@@ -67,7 +72,7 @@ def trainPetUNet():
 
     UNet = PetUNet().to(device)
 
-    #loss_fn = nn.CrossEntropyLoss().to(device)
+    # loss_fn = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.Adam(UNet.parameters(), lr=1e-4)
 
     for epoch in range(25):
@@ -108,29 +113,41 @@ def trainPetUNet():
             center_cropped_mask = center_cropped_mask.squeeze(1)
 
             loss = combined_loss(output, center_cropped_mask, device)
-            logger.debug(f'Loss at current step is {loss.item()}')
+            logger.debug(f"Loss at current step is {loss.item()}")
             loss.backward()
             optimizer.step()
 
             losses.append(loss.item())
             rolling_loss.append(loss.item())
-            
+
         display_image_and_mask(
-            cropped_image, center_cropped_mask, f"images/full_loop/regular-epoch-{epoch}.jpg"
+            cropped_image,
+            center_cropped_mask,
+            f"images/full_loop-2/regular-epoch-{epoch}.jpg",
         )
         display_image_and_mask(
-            cropped_image, convert_model_output_to_values(output), f"images/full_loop/model-epoch-{epoch}.jpg"
+            cropped_image,
+            convert_model_output_to_values(output),
+            f"images/full_loop-2/model-epoch-{epoch}.jpg",
         )
 
-        logger.info(f"Average Loss for epoch {epoch}: {sum(rolling_loss) / len(rolling_loss)}")
-        torch.save(UNet.state_dict(), f"model_state_dicts/full_model/{epoch}-single-epoch-policy_net.pth")
+        logger.info(
+            f"Average Loss for epoch {epoch}: {sum(rolling_loss) / len(rolling_loss)}"
+        )
+        torch.save(
+            UNet.state_dict(),
+            f"model_state_dicts/full_model-2/{epoch}-single-epoch-policy_net.pth",
+        )
 
     with open("losses-adam.pkl", "wb") as f:
         pickle.dump(losses, f)
 
     return True
 
+
 """ Does not work YET, no meanginful data learned"""
+
+
 def trainPetUNetSGD():
     losses = []
 
@@ -143,7 +160,7 @@ def trainPetUNetSGD():
 
     UNet = PetUNet().to(device)
 
-    #loss_fn = nn.CrossEntropyLoss().to(device)
+    # loss_fn = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.SGD(UNet.parameters(), lr=0.001, momentum=0.90)
 
     for epoch in range(25):
@@ -184,22 +201,31 @@ def trainPetUNetSGD():
             center_cropped_mask = center_cropped_mask.squeeze(1)
 
             loss = combined_loss(output, center_cropped_mask, device)
-            logger.debug(f'Loss at current step is {loss.item()}')
+            logger.debug(f"Loss at current step is {loss.item()}")
             loss.backward()
             optimizer.step()
 
             losses.append(loss.item())
             rolling_loss.append(loss.item())
-            
+
         display_image_and_mask(
-            cropped_image, center_cropped_mask, f"images/full_loop_sgd/regular-epoch-{epoch}.jpg"
+            cropped_image,
+            center_cropped_mask,
+            f"images/full_loop_sgd/regular-epoch-{epoch}.jpg",
         )
         display_image_and_mask(
-            cropped_image, convert_model_output_to_values(output), f"images/full_loop_sgd/model-epoch-{epoch}.jpg"
+            cropped_image,
+            convert_model_output_to_values(output),
+            f"images/full_loop_sgd/model-epoch-{epoch}.jpg",
         )
 
-        logger.info(f"Average Loss for epoch {epoch}: {sum(rolling_loss) / len(rolling_loss)}")
-        torch.save(UNet.state_dict(), f"model_state_dicts/full_model_sgd/{epoch}-single-epoch-policy_net.pth")
+        logger.info(
+            f"Average Loss for epoch {epoch}: {sum(rolling_loss) / len(rolling_loss)}"
+        )
+        torch.save(
+            UNet.state_dict(),
+            f"model_state_dicts/full_model_sgd/{epoch}-single-epoch-policy_net.pth",
+        )
 
     with open("losses-adam.pkl", "wb") as f:
         pickle.dump(losses, f)
@@ -210,6 +236,8 @@ def trainPetUNetSGD():
 """
 Sanity check training loop, train our model on a single image and crop and make sure it can learn 
 """
+
+
 def trainPetUNetSingleItem():
     losses = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -267,12 +295,19 @@ def trainPetUNetSingleItem():
         losses.append(loss.item())
 
         torch.save(
-            UNet.state_dict(), f"model_state_dicts/single_image_sgd/{epoch}-policy_net.pth"
+            UNet.state_dict(),
+            f"model_state_dicts/single_image_sgd/{epoch}-policy_net.pth",
         )
 
-        display_image_and_mask(cropped_image, center_cropped_mask, f'images/single_image/regular-epoch-{epoch}.jpg')
+        display_image_and_mask(
+            cropped_image,
+            center_cropped_mask,
+            f"images/single_image/regular-epoch-{epoch}.jpg",
+        )
         output_mask = convert_model_output_to_values(output)
-        display_image_and_mask(cropped_image, output_mask, f'images/single_image/model-epoch-{epoch}.jpg')
+        display_image_and_mask(
+            cropped_image, output_mask, f"images/single_image/model-epoch-{epoch}.jpg"
+        )
 
     with open("losses_single_image.pkl", "wb") as f:
         pickle.dump(losses, f)
