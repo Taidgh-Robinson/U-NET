@@ -11,5 +11,3 @@ wheels/
 data/
 images/
 model_state_dicts/
-*.pkl
-losses.pkl

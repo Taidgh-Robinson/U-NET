@@ -123,12 +123,12 @@ def trainPetUNet():
         display_image_and_mask(
             cropped_image,
             center_cropped_mask,
-            f"images/full_loop-2/regular-epoch-{epoch}.jpg",
+            f"images/full_loop_adam/regular-epoch-{epoch}.jpg",
         )
         display_image_and_mask(
             cropped_image,
             convert_model_output_to_values(output),
-            f"images/full_loop-2/model-epoch-{epoch}.jpg",
+            f"images/full_loop_adam/model-epoch-{epoch}.jpg",
         )
 
         logger.info(
@@ -136,10 +136,10 @@ def trainPetUNet():
         )
         torch.save(
             UNet.state_dict(),
-            f"model_state_dicts/full_model-2/{epoch}-single-epoch-policy_net.pth",
+            f"model_state_dicts/full_model_adam/{epoch}-policy_net.pth",
         )
 
-    with open("losses-adam.pkl", "wb") as f:
+    with open("losses/losses-adam.pkl", "wb") as f:
         pickle.dump(losses, f)
 
     return True
@@ -161,7 +161,7 @@ def trainPetUNetSGD():
     UNet = PetUNet().to(device)
 
     # loss_fn = nn.CrossEntropyLoss().to(device)
-    optimizer = torch.optim.SGD(UNet.parameters(), lr=0.001, momentum=0.90)
+    optimizer = torch.optim.SGD(UNet.parameters(), lr=0.01, momentum=0.90)
 
     for epoch in range(25):
         rolling_loss = []
@@ -224,7 +224,7 @@ def trainPetUNetSGD():
         )
         torch.save(
             UNet.state_dict(),
-            f"model_state_dicts/full_model_sgd/{epoch}-single-epoch-policy_net.pth",
+            f"model_state_dicts/full_model_sgd/{epoch}-policy_net.pth",
         )
 
     with open("losses-adam.pkl", "wb") as f:
@@ -309,11 +309,11 @@ def trainPetUNetSingleItem():
             cropped_image, output_mask, f"images/single_image/model-epoch-{epoch}.jpg"
         )
 
-    with open("losses_single_image.pkl", "wb") as f:
+    with open("losses/losses_single_image.pkl", "wb") as f:
         pickle.dump(losses, f)
 
     return True
 
 
 if __name__ == "__main__":
-    print(trainPetUNet())
+    print(trainPetUNetSGD())
