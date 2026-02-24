@@ -7,6 +7,7 @@ from logger_config import logger
 
 """ 
 Not something we train but we could if we wanted to.
+Can also just load state dict from regular PetUNet, they have the layers
 Used during demo to show data move through the model
 """
 
@@ -139,6 +140,9 @@ class PetUNetWithLogging(nn.Module):
         return x
 
 
+"""
+UNet that is a 1:1 recreation of the model in the white paper
+"""
 class PetUNet(nn.Module):
     def _conv3x3(self, in_channels, out_channels):
         return nn.Conv2d(

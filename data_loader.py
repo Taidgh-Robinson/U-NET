@@ -3,6 +3,9 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import torchvision.transforms.functional as TF
 
+generator = torch.Generator()
+generator.manual_seed(42)
+
 
 def OxfordPetDatasetLoader(image_scale):
     image_transform = transforms.Compose(
@@ -41,7 +44,7 @@ def OxfordPetDatasetLoader(image_scale):
         target_types="segmentation",
         download=True,
         transform=image_transform,
-        target_transform=mask_transform,
+        target_transform=mask_transform
     )
 
     test_dataset = datasets.OxfordIIITPet(
@@ -50,38 +53,28 @@ def OxfordPetDatasetLoader(image_scale):
         target_types="segmentation",
         download=True,
         transform=image_transform,
-        target_transform=mask_transform,
+        target_transform=mask_transform
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, generator=generator)
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True, generator=generator)
 
     return (train_loader, test_loader)
 
 
 def OxfordPetDatasetLoaderNoChanges(IMAGE_SIZE):
-    image_transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize(mean=[0.5], std=[0.5])]
-    )
-
-    mask_transform = transforms.Compose(
-        [
-            transforms.PILToTensor()  # keeps integer labels
-        ]
-    )
-
     train_dataset = datasets.OxfordIIITPet(
         root="./data",
         split="trainval",
         target_types="segmentation",
-        download=True,
+        download=True
     )
 
     test_dataset = datasets.OxfordIIITPet(
         root="./data",
         split="test",
         target_types="segmentation",
-        download=True,
+        download=True
     )
 
     return (train_dataset, test_dataset)

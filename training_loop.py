@@ -9,16 +9,15 @@ from helper_functions import (
     convert_model_output_to_values,
     generate_random_crop_bounds,
     mirror_pad_to_size,
-    compute_class_ratio,
 )
 import torchvision.transforms.functional as TF
-import torch.optim as optim
 import torch
 import numpy as np
 import random
 import torch.nn as nn
 import pickle
 from logger_config import logger
+from config import NUM_EPOCHS
 
 # Make CUDA operations deterministic
 torch.backends.cudnn.deterministic = True
@@ -75,7 +74,7 @@ def trainPetUNet():
     # loss_fn = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.Adam(UNet.parameters(), lr=1e-4)
 
-    for epoch in range(25):
+    for epoch in range(NUM_EPOCHS):
         rolling_loss = []
         UNet.train()
         run = 0
@@ -163,7 +162,7 @@ def trainPetUNetSGD():
     # loss_fn = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.SGD(UNet.parameters(), lr=0.01, momentum=0.90)
 
-    for epoch in range(25):
+    for epoch in range(NUM_EPOCHS):
         rolling_loss = []
         UNet.train()
         run = 0
@@ -279,6 +278,11 @@ def trainPetUNetSingleItem():
     # Ensure mask is on the same device as model
     center_cropped_mask = center_cropped_mask.to(device)
     center_cropped_mask = center_cropped_mask.squeeze(1)  # remove channel
+    display_image_and_mask(
+        cropped_image,
+        center_cropped_mask,
+        f"images/single_image/regular-mask.jpg",
+    )
 
     for epoch in range(1000):
         UNet.train()
@@ -299,11 +303,6 @@ def trainPetUNetSingleItem():
             f"model_state_dicts/single_image_sgd/{epoch}-policy_net.pth",
         )
 
-        display_image_and_mask(
-            cropped_image,
-            center_cropped_mask,
-            f"images/single_image/regular-epoch-{epoch}.jpg",
-        )
         output_mask = convert_model_output_to_values(output)
         display_image_and_mask(
             cropped_image, output_mask, f"images/single_image/model-epoch-{epoch}.jpg"
@@ -316,4 +315,4 @@ def trainPetUNetSingleItem():
 
 
 if __name__ == "__main__":
-    print(trainPetUNetSGD())
+    print(trainPetUNetSingleItem())
