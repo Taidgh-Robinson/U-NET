@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from random import randrange
 from logger_config import logger
+import torchvision.transforms.functional as TF
 
 
 def plot_loss(loss_array, title="Training Loss", xlabel="Iteration", ylabel="Loss"):
@@ -121,3 +122,33 @@ def compute_class_ratio(train_loader, device):
 
     ratio = animal_pixels / total_pixels
     return ratio
+
+
+def test_model_against_image_and_mask(model, image, mask):
+    image = mirror_pad_to_size(image, 572)
+    mask = mirror_pad_to_size(mask, 572)
+    display_image_and_mask(image, mask, "images/raw.png")
+
+    crop_boundies = generate_random_crop_bounds(image, 572)
+    cropped_image = image[
+        :,
+        :,
+        crop_boundies[0][0] : crop_boundies[0][1],
+        crop_boundies[1][0] : crop_boundies[1][1],
+    ]
+    cropped_mask = mask[
+        :,
+        :,
+        crop_boundies[0][0] : crop_boundies[0][1],
+        crop_boundies[1][0] : crop_boundies[1][1],
+    ]
+
+    center_cropped_mask = TF.center_crop(cropped_mask, output_size=(388, 388))
+    center_cropped_mask = center_cropped_mask == 1
+
+    display_image_and_mask(cropped_image, center_cropped_mask, "images/target.png")
+
+    output = model(cropped_image)
+    display_image_and_mask(
+        cropped_image, convert_model_output_to_values(output), "images/output.png"
+    )

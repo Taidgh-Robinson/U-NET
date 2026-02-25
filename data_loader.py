@@ -44,7 +44,7 @@ def OxfordPetDatasetLoader(image_scale):
         target_types="segmentation",
         download=True,
         transform=image_transform,
-        target_transform=mask_transform
+        target_transform=mask_transform,
     )
 
     test_dataset = datasets.OxfordIIITPet(
@@ -53,28 +53,26 @@ def OxfordPetDatasetLoader(image_scale):
         target_types="segmentation",
         download=True,
         transform=image_transform,
-        target_transform=mask_transform
+        target_transform=mask_transform,
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, generator=generator)
-    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True, generator=generator)
+    train_loader = DataLoader(
+        train_dataset, batch_size=1, shuffle=True, generator=generator
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=1, shuffle=True, generator=generator
+    )
 
     return (train_loader, test_loader)
 
 
 def OxfordPetDatasetLoaderNoChanges(IMAGE_SIZE):
     train_dataset = datasets.OxfordIIITPet(
-        root="./data",
-        split="trainval",
-        target_types="segmentation",
-        download=True
+        root="./data", split="trainval", target_types="segmentation", download=True
     )
 
     test_dataset = datasets.OxfordIIITPet(
-        root="./data",
-        split="test",
-        target_types="segmentation",
-        download=True
+        root="./data", split="test", target_types="segmentation", download=True
     )
 
     return (train_dataset, test_dataset)

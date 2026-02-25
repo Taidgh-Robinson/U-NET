@@ -1,7 +1,12 @@
-# Elasitic deform
-# Traditional deform
-# Feed image section into model
-# Calculate loss between model output + centered cropped section of mask
+import torch
+import random
+import pickle
+import numpy as np
+import torchvision.transforms.functional as TF
+import torch.nn as nn
+from logger_config import logger
+from config import NUM_EPOCHS
+from loss import combined_loss
 from data_loader import OxfordPetDatasetLoader
 from models import PetUNet
 from helper_functions import (
@@ -10,14 +15,6 @@ from helper_functions import (
     generate_random_crop_bounds,
     mirror_pad_to_size,
 )
-import torchvision.transforms.functional as TF
-import torch
-import numpy as np
-import random
-import torch.nn as nn
-import pickle
-from logger_config import logger
-from config import NUM_EPOCHS
 
 # Make CUDA operations deterministic
 torch.backends.cudnn.deterministic = True
@@ -37,26 +34,6 @@ def elastic_deformation(image, mask):
 
 def traditional_deformation(image, mask):
     pass
-
-
-def dice_loss(pred, target, smooth=1):
-    # pred is raw logits [B, 2, H, W], target is [B, H, W] long
-    pred = torch.softmax(pred, dim=1)  # convert to probabilities
-    pred_fg = pred[:, 1, :, :]  # grab foreground channel probability
-
-    target_float = target.float()
-
-    intersection = (pred_fg * target_float).sum()
-    return 1 - (2.0 * intersection + smooth) / (
-        pred_fg.sum() + target_float.sum() + smooth
-    )
-
-
-# Combined loss
-def combined_loss(pred, target, device, dice_weight=0.5):
-    ce = nn.CrossEntropyLoss().to(device)(pred, target)
-    dice = dice_loss(pred, target)
-    return ce * (1 - dice_weight) + dice * dice_weight
 
 
 def trainPetUNet():
@@ -135,7 +112,7 @@ def trainPetUNet():
         )
         torch.save(
             UNet.state_dict(),
-            f"model_state_dicts/full_model_adam/{epoch}-policy_net.pth",
+            f"model_state_dicts/full_model_adam/policy_net-{epoch}.pth",
         )
 
     with open("losses/losses-adam.pkl", "wb") as f:
@@ -223,7 +200,7 @@ def trainPetUNetSGD():
         )
         torch.save(
             UNet.state_dict(),
-            f"model_state_dicts/full_model_sgd/{epoch}-policy_net.pth",
+            f"model_state_dicts/full_model_sgd/policy_net-{epoch}.pth",
         )
 
     with open("losses-adam.pkl", "wb") as f:
