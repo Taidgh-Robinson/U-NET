@@ -14,6 +14,9 @@ from helper_functions import (
     convert_model_output_to_values,
     generate_random_crop_bounds,
     mirror_pad_to_size,
+    create_required_directories,
+    save_target_and_output,
+    save_model_as_state_dict
 )
 
 # Make CUDA operations deterministic
@@ -28,15 +31,9 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(42)
 
 
-def elastic_deformation(image, mask):
-    pass
+def trainPetUNet(model_name):
+    image_path, state_dict_path, loss_path = create_required_directories(model_name)
 
-
-def traditional_deformation(image, mask):
-    pass
-
-
-def trainPetUNet():
     losses = []
 
     if torch.cuda.is_available():
@@ -54,7 +51,6 @@ def trainPetUNet():
     for epoch in range(NUM_EPOCHS):
         rolling_loss = []
         UNet.train()
-        run = 0
         for image, mask in train_dataset:
             image = mirror_pad_to_size(image, 572).to(device)
             mask = mirror_pad_to_size(mask, 572).to(device)
@@ -96,24 +92,12 @@ def trainPetUNet():
             losses.append(loss.item())
             rolling_loss.append(loss.item())
 
-        display_image_and_mask(
-            cropped_image,
-            center_cropped_mask,
-            f"images/full_loop_adam/regular-epoch-{epoch}.jpg",
-        )
-        display_image_and_mask(
-            cropped_image,
-            convert_model_output_to_values(output),
-            f"images/full_loop_adam/model-epoch-{epoch}.jpg",
-        )
-
         logger.info(
             f"Average Loss for epoch {epoch}: {sum(rolling_loss) / len(rolling_loss)}"
         )
-        torch.save(
-            UNet.state_dict(),
-            f"model_state_dicts/full_model_adam/policy_net-{epoch}.pth",
-        )
+
+        save_target_and_output(cropped_image, center_cropped_mask, output, image_path, epoch)
+        save_model_as_state_dict(UNet, state_dict_path, epoch)
 
     with open("losses/losses-adam.pkl", "wb") as f:
         pickle.dump(losses, f)
@@ -124,7 +108,9 @@ def trainPetUNet():
 """ Does not work YET, no meanginful data learned"""
 
 
-def trainPetUNetSGD():
+def trainPetUNetSGD(model_name):
+    image_path, state_dict_path, loss_path = create_required_directories(model_name)
+
     losses = []
 
     if torch.cuda.is_available():
@@ -184,24 +170,13 @@ def trainPetUNetSGD():
             losses.append(loss.item())
             rolling_loss.append(loss.item())
 
-        display_image_and_mask(
-            cropped_image,
-            center_cropped_mask,
-            f"images/full_loop_sgd/regular-epoch-{epoch}.jpg",
-        )
-        display_image_and_mask(
-            cropped_image,
-            convert_model_output_to_values(output),
-            f"images/full_loop_sgd/model-epoch-{epoch}.jpg",
-        )
-
+        
         logger.info(
             f"Average Loss for epoch {epoch}: {sum(rolling_loss) / len(rolling_loss)}"
         )
-        torch.save(
-            UNet.state_dict(),
-            f"model_state_dicts/full_model_sgd/policy_net-{epoch}.pth",
-        )
+
+        save_target_and_output(cropped_image, center_cropped_mask, output, image_path, epoch)
+        save_model_as_state_dict(UNet, state_dict_path, epoch)
 
     with open("losses-adam.pkl", "wb") as f:
         pickle.dump(losses, f)
@@ -214,7 +189,9 @@ Sanity check training loop, train our model on a single image and crop and make 
 """
 
 
-def trainPetUNetSingleItem():
+def trainPetUNetSingleItem(model_name):
+    image_path, state_dict_path, loss_path = create_required_directories(model_name)
+
     losses = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -255,12 +232,6 @@ def trainPetUNetSingleItem():
     # Ensure mask is on the same device as model
     center_cropped_mask = center_cropped_mask.to(device)
     center_cropped_mask = center_cropped_mask.squeeze(1)  # remove channel
-    display_image_and_mask(
-        cropped_image,
-        center_cropped_mask,
-        f"images/single_image/regular-mask.jpg",
-    )
-
     for epoch in range(1000):
         UNet.train()
 
@@ -275,15 +246,8 @@ def trainPetUNetSingleItem():
         print(loss.item())
         losses.append(loss.item())
 
-        torch.save(
-            UNet.state_dict(),
-            f"model_state_dicts/single_image_sgd/{epoch}-policy_net.pth",
-        )
-
-        output_mask = convert_model_output_to_values(output)
-        display_image_and_mask(
-            cropped_image, output_mask, f"images/single_image/model-epoch-{epoch}.jpg"
-        )
+        save_model_as_state_dict(UNet, state_dict_path, epoch)
+        save_target_and_output(cropped_image, center_cropped_mask, output, image_path, epoch)
 
     with open("losses/losses_single_image.pkl", "wb") as f:
         pickle.dump(losses, f)
@@ -292,4 +256,4 @@ def trainPetUNetSingleItem():
 
 
 if __name__ == "__main__":
-    print(trainPetUNet())
+    print(trainPetUNetSingleItem('single_image_sgd'))
