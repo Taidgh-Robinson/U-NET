@@ -292,4 +292,4 @@ def trainPetUNetSingleItem():
 
 
 if __name__ == "__main__":
-    print(trainPetUNetSingleItem())
+    print(trainPetUNet())
