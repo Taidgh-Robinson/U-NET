@@ -11,12 +11,13 @@ from data_loader import OxfordPetDatasetLoader
 from models import PetUNet
 from helper_functions import (
     display_image_and_mask,
-    convert_model_output_to_values,
+    save_loss_information,
     generate_random_crop_bounds,
     mirror_pad_to_size,
     create_required_directories,
     save_target_and_output,
-    save_model_as_state_dict
+    save_model_as_state_dict,
+    crop_with_boundaries
 )
 
 # Make CUDA operations deterministic
@@ -33,42 +34,24 @@ if torch.cuda.is_available():
 
 def trainPetUNet(model_name):
     image_path, state_dict_path, loss_path = create_required_directories(model_name)
-
     losses = []
-
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
-
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_dataset, test_dataset = OxfordPetDatasetLoader(2)
-
     UNet = PetUNet().to(device)
-
-    # loss_fn = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.Adam(UNet.parameters(), lr=1e-4)
 
     for epoch in range(NUM_EPOCHS):
         rolling_loss = []
         UNet.train()
         for image, mask in train_dataset:
+            # Ensure image and mask are at least 572x572
             image = mirror_pad_to_size(image, 572).to(device)
             mask = mirror_pad_to_size(mask, 572).to(device)
-            # Select random 572x572 section of image + corresponding part of mask
-            crop_boundies = generate_random_crop_bounds(image, 572)
-            cropped_image = image[
-                :,
-                :,
-                crop_boundies[0][0] : crop_boundies[0][1],
-                crop_boundies[1][0] : crop_boundies[1][1],
-            ]
-            cropped_mask = mask[
-                :,
-                :,
-                crop_boundies[0][0] : crop_boundies[0][1],
-                crop_boundies[1][0] : crop_boundies[1][1],
-            ]
 
+            # Select random 572x572 section of image + corresponding part of mask
+            crop_boundaries = generate_random_crop_bounds(image, 572)
+            cropped_image = crop_with_boundaries(image, crop_boundaries)
+            cropped_mask = crop_with_boundaries(mask, crop_boundaries)
             center_cropped_mask = TF.center_crop(
                 cropped_mask, output_size=(388, 388)
             ).to(device)
@@ -76,7 +59,6 @@ def trainPetUNet(model_name):
             # Oxford pets come as 1: Animal, 2: Background, 3: Border
             # Rework it so 0: Not Animal, 1: Animal
             center_cropped_mask = (center_cropped_mask == 1).long()
-            pet_frac = center_cropped_mask.float().mean().item()
             output = UNet(cropped_image)
 
             # Calculate loss between model output + centered cropped section of mask
@@ -86,9 +68,12 @@ def trainPetUNet(model_name):
 
             loss = combined_loss(output, center_cropped_mask, device)
             logger.debug(f"Loss at current step is {loss.item()}")
+            
+            # Update model
             loss.backward()
             optimizer.step()
 
+            # Store loss in total list + per epoch list to verify the model is learning
             losses.append(loss.item())
             rolling_loss.append(loss.item())
 
@@ -99,9 +84,7 @@ def trainPetUNet(model_name):
         save_target_and_output(cropped_image, center_cropped_mask, output, image_path, epoch)
         save_model_as_state_dict(UNet, state_dict_path, epoch)
 
-    with open("losses/losses-adam.pkl", "wb") as f:
-        pickle.dump(losses, f)
-
+    save_loss_information(losses, model_name, loss_path)
     return True
 
 
@@ -110,19 +93,10 @@ def trainPetUNet(model_name):
 
 def trainPetUNetSGD(model_name):
     image_path, state_dict_path, loss_path = create_required_directories(model_name)
-
     losses = []
-
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
-
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_dataset, test_dataset = OxfordPetDatasetLoader(2)
-
     UNet = PetUNet().to(device)
-
-    # loss_fn = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.SGD(UNet.parameters(), lr=0.01, momentum=0.90)
 
     for epoch in range(NUM_EPOCHS):
@@ -132,20 +106,11 @@ def trainPetUNetSGD(model_name):
         for image, mask in train_dataset:
             image = mirror_pad_to_size(image, 572).to(device)
             mask = mirror_pad_to_size(mask, 572).to(device)
+
             # Select random 572x572 section of image + corresponding part of mask
-            crop_boundies = generate_random_crop_bounds(image, 572)
-            cropped_image = image[
-                :,
-                :,
-                crop_boundies[0][0] : crop_boundies[0][1],
-                crop_boundies[1][0] : crop_boundies[1][1],
-            ]
-            cropped_mask = mask[
-                :,
-                :,
-                crop_boundies[0][0] : crop_boundies[0][1],
-                crop_boundies[1][0] : crop_boundies[1][1],
-            ]
+            crop_boundaries = generate_random_crop_bounds(image, 572)
+            cropped_image = crop_with_boundaries(image, crop_boundaries)
+            cropped_mask = crop_with_boundaries(mask, crop_boundaries)
 
             center_cropped_mask = TF.center_crop(
                 cropped_mask, output_size=(388, 388)
@@ -154,7 +119,6 @@ def trainPetUNetSGD(model_name):
             # Oxford pets come as 1: Animal, 2: Background, 3: Border
             # Rework it so 0: Not Animal, 1: Animal
             center_cropped_mask = (center_cropped_mask == 1).long()
-            pet_frac = center_cropped_mask.float().mean().item()
             output = UNet(cropped_image)
 
             # Calculate loss between model output + centered cropped section of mask
@@ -178,8 +142,7 @@ def trainPetUNetSGD(model_name):
         save_target_and_output(cropped_image, center_cropped_mask, output, image_path, epoch)
         save_model_as_state_dict(UNet, state_dict_path, epoch)
 
-    with open("losses-adam.pkl", "wb") as f:
-        pickle.dump(losses, f)
+    save_loss_information(losses, model_name, loss_path)
 
     return True
 
@@ -191,15 +154,11 @@ Sanity check training loop, train our model on a single image and crop and make 
 
 def trainPetUNetSingleItem(model_name):
     image_path, state_dict_path, loss_path = create_required_directories(model_name)
-
     losses = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     UNet = PetUNet().to(device)
-
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(UNet.parameters(), lr=0.01, momentum=0.90)
-
     train_dataset, test_dataset = OxfordPetDatasetLoader(2)
 
     image, mask = next(iter(train_dataset))
@@ -209,19 +168,10 @@ def trainPetUNetSingleItem(model_name):
     image = image.to(device)
     mask = mask.to(device)
     display_image_and_mask(image, mask)
-    crop_boundies = generate_random_crop_bounds(image, 572)
-    cropped_image = image[
-        :,
-        :,
-        crop_boundies[0][0] : crop_boundies[0][1],
-        crop_boundies[1][0] : crop_boundies[1][1],
-    ]
-    cropped_mask = mask[
-        :,
-        :,
-        crop_boundies[0][0] : crop_boundies[0][1],
-        crop_boundies[1][0] : crop_boundies[1][1],
-    ]
+
+    crop_boundaries = generate_random_crop_bounds(image, 572)
+    cropped_image = crop_with_boundaries(image, crop_boundaries)
+    cropped_mask = crop_with_boundaries(mask, crop_boundaries)
 
     center_cropped_mask = TF.center_crop(cropped_mask, output_size=(388, 388))
 
@@ -249,8 +199,7 @@ def trainPetUNetSingleItem(model_name):
         save_model_as_state_dict(UNet, state_dict_path, epoch)
         save_target_and_output(cropped_image, center_cropped_mask, output, image_path, epoch)
 
-    with open("losses/losses_single_image.pkl", "wb") as f:
-        pickle.dump(losses, f)
+    save_loss_information(losses, model_name, loss_path)
 
     return True
 

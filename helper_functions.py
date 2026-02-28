@@ -3,11 +3,11 @@ import torch
 import math
 import os
 import torch.nn as nn
+import pickle
 from random import randrange
 from logger_config import logger
 import torchvision.transforms.functional as TF
 import torch.nn.functional as F
-
 
 def plot_loss(loss_array, title="Training Loss", xlabel="Iteration", ylabel="Loss"):
     """
@@ -186,6 +186,17 @@ def save_model_as_state_dict(model, state_dict_path, idx):
         f"{state_dict_path}/policy_net-{idx}.pth",
     )
 
+def save_loss_information(loss, loss_path, model_name):
+    with open(f'{loss_path}/{model_name}.pkl', "wb") as f:
+        pickle.dump(loss, f)
+
+def crop_with_boundaries(tensor, crop_boundaries):
+    return tensor[
+        :,
+        :,
+        crop_boundaries[0][0] : crop_boundaries[0][1],
+        crop_boundaries[1][0] : crop_boundaries[1][1],
+    ]
 
 def apply_model_to_whole_image(model, image):
     """
