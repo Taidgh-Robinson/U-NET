@@ -32,17 +32,17 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(42)
 
 
-def trainPetUNet(model_name):
+def trainPetUNetADAM(model_name, unet_model):
     image_path, state_dict_path, loss_path = create_required_directories(model_name)
     losses = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_dataset, test_dataset = OxfordPetDatasetLoader(2)
-    UNet = PetUNet().to(device)
-    optimizer = torch.optim.Adam(UNet.parameters(), lr=1e-4)
+    unet_model = unet_model.to(device)
+    optimizer = torch.optim.Adam(unet_model.parameters(), lr=1e-4)
 
     for epoch in range(NUM_EPOCHS):
         rolling_loss = []
-        UNet.train()
+        unet_model.train()
         for image, mask in train_dataset:
             # Ensure image and mask are at least 572x572
             image = mirror_pad_to_size(image, 572).to(device)
@@ -59,7 +59,7 @@ def trainPetUNet(model_name):
             # Oxford pets come as 1: Animal, 2: Background, 3: Border
             # Rework it so 0: Not Animal, 1: Animal
             center_cropped_mask = (center_cropped_mask == 1).long()
-            output = UNet(cropped_image)
+            output = unet_model(cropped_image)
 
             # Calculate loss between model output + centered cropped section of mask
             optimizer.zero_grad()
@@ -82,11 +82,9 @@ def trainPetUNet(model_name):
         )
 
         save_target_and_output(cropped_image, center_cropped_mask, output, image_path, epoch)
-        save_model_as_state_dict(UNet, state_dict_path, epoch)
+        save_model_as_state_dict(unet_model, state_dict_path, epoch)
 
-    save_loss_information(losses, model_name, loss_path)
-    return True
-
+    save_loss_information(losses, loss_path, model_name)
 
 """ Does not work YET, no meanginful data learned"""
 
@@ -202,7 +200,3 @@ def trainPetUNetSingleItem(model_name):
     save_loss_information(losses, model_name, loss_path)
 
     return True
-
-
-if __name__ == "__main__":
-    print(trainPetUNetSingleItem('single_image_sgd'))

@@ -11,4 +11,5 @@ wheels/
 data/
 images/
 model_state_dicts/
+model_state_dict/
 .DS_Store
