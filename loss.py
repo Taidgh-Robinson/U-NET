@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 def dice_loss(pred, target, smooth=1):
     # pred is raw logits [B, 2, H, W], target is [B, H, W] long
     pred = torch.softmax(pred, dim=1)  # convert to probabilities

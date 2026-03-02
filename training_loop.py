@@ -17,7 +17,7 @@ from helper_functions import (
     create_required_directories,
     save_target_and_output,
     save_model_as_state_dict,
-    crop_with_boundaries
+    crop_with_boundaries,
 )
 
 # Make CUDA operations deterministic
@@ -68,7 +68,7 @@ def trainPetUNetADAM(model_name, unet_model):
 
             loss = combined_loss(output, center_cropped_mask, device)
             logger.debug(f"Loss at current step is {loss.item()}")
-            
+
             # Update model
             loss.backward()
             optimizer.step()
@@ -81,25 +81,28 @@ def trainPetUNetADAM(model_name, unet_model):
             f"Average Loss for epoch {epoch}: {sum(rolling_loss) / len(rolling_loss)}"
         )
 
-        save_target_and_output(cropped_image, center_cropped_mask, output, image_path, epoch)
+        save_target_and_output(
+            cropped_image, center_cropped_mask, output, image_path, epoch
+        )
         save_model_as_state_dict(unet_model, state_dict_path, epoch)
 
     save_loss_information(losses, loss_path, model_name)
 
+
 """ Does not work YET, no meanginful data learned"""
 
 
-def trainPetUNetSGD(model_name):
+def trainPetUNetSGD(model_name, unet_model):
     image_path, state_dict_path, loss_path = create_required_directories(model_name)
     losses = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_dataset, test_dataset = OxfordPetDatasetLoader(2)
-    UNet = PetUNet().to(device)
-    optimizer = torch.optim.SGD(UNet.parameters(), lr=0.01, momentum=0.90)
+    unet_model = unet_model.to(device)
+    optimizer = torch.optim.SGD(unet_model.parameters(), lr=0.01, momentum=0.90)
 
     for epoch in range(NUM_EPOCHS):
         rolling_loss = []
-        UNet.train()
+        unet_model.train()
         run = 0
         for image, mask in train_dataset:
             image = mirror_pad_to_size(image, 572).to(device)
@@ -117,7 +120,7 @@ def trainPetUNetSGD(model_name):
             # Oxford pets come as 1: Animal, 2: Background, 3: Border
             # Rework it so 0: Not Animal, 1: Animal
             center_cropped_mask = (center_cropped_mask == 1).long()
-            output = UNet(cropped_image)
+            output = unet_model(cropped_image)
 
             # Calculate loss between model output + centered cropped section of mask
             optimizer.zero_grad()
@@ -132,13 +135,14 @@ def trainPetUNetSGD(model_name):
             losses.append(loss.item())
             rolling_loss.append(loss.item())
 
-        
         logger.info(
             f"Average Loss for epoch {epoch}: {sum(rolling_loss) / len(rolling_loss)}"
         )
 
-        save_target_and_output(cropped_image, center_cropped_mask, output, image_path, epoch)
-        save_model_as_state_dict(UNet, state_dict_path, epoch)
+        save_target_and_output(
+            cropped_image, center_cropped_mask, output, image_path, epoch
+        )
+        save_model_as_state_dict(unet_model, state_dict_path, epoch)
 
     save_loss_information(losses, model_name, loss_path)
 
@@ -195,7 +199,9 @@ def trainPetUNetSingleItem(model_name):
         losses.append(loss.item())
 
         save_model_as_state_dict(UNet, state_dict_path, epoch)
-        save_target_and_output(cropped_image, center_cropped_mask, output, image_path, epoch)
+        save_target_and_output(
+            cropped_image, center_cropped_mask, output, image_path, epoch
+        )
 
     save_loss_information(losses, model_name, loss_path)
 
