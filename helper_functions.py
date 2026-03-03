@@ -9,7 +9,7 @@ from logger_config import logger
 import torchvision.transforms.functional as TF
 import torch.nn.functional as F
 import numpy as np
-
+from loss import combined_loss
 
 def plot_average_loss(
     loss_array, title="Training Loss", xlabel="Iteration", ylabel="Loss", window=500
@@ -302,3 +302,38 @@ def apply_model_to_whole_image(model, image):
         full_mask = full_mask.squeeze(0)
 
     return full_mask
+
+
+def calculate_final_model_accuracy(model, device, test_dataset):
+    model = model.to(device)
+    model.eval()
+    total_loss = 0.0
+    total_correct = 0
+    total_pixels = 0
+    total_iou = 0.0
+
+    with torch.no_grad():
+        for image, mask in test_dataset:
+            image, mask = image.to(device), mask.to(device)
+            mask = (mask == 1).long().squeeze(1)
+            pred = apply_model_to_whole_image(model, image).to(device)
+
+            loss = combined_loss(pred, mask, device)
+            total_loss += loss
+
+            pred_classes = torch.argmax(pred, dim=1)
+            total_correct += (pred_classes == mask).sum().item()
+            total_pixels += mask.numel()
+
+            # IoU per batch
+            intersection = (pred_classes & mask).sum().item()
+            union = (pred_classes | mask).sum().item()
+            total_iou += intersection / union if union > 0 else 1.0
+
+    avg_loss = total_loss / len(test_dataset)
+    pixel_accuracy = total_correct / total_pixels
+    mean_iou = total_iou / len(test_dataset)
+
+    print(f"Avg Loss:       {avg_loss:.4f}")
+    print(f"Pixel Accuracy: {pixel_accuracy:.4f}")
+    print(f"Mean IoU:       {mean_iou:.4f}")
