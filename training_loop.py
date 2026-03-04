@@ -32,11 +32,10 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(42)
 
 
-def trainPetUNetADAM(model_name, unet_model):
+def trainPetUNetADAM(model_name, unet_model, train_dataset, is_color=False):
     image_path, state_dict_path, loss_path = create_required_directories(model_name)
     losses = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_dataset, test_dataset = OxfordPetDatasetLoader(2)
     unet_model = unet_model.to(device)
     optimizer = torch.optim.Adam(unet_model.parameters(), lr=1e-4)
 
@@ -82,7 +81,7 @@ def trainPetUNetADAM(model_name, unet_model):
         )
 
         save_target_and_output(
-            cropped_image, center_cropped_mask, output, image_path, epoch
+            cropped_image, center_cropped_mask, output, image_path, epoch, is_color
         )
         save_model_as_state_dict(unet_model, state_dict_path, epoch)
 
@@ -140,7 +139,7 @@ def trainPetUNetSGD(model_name, unet_model):
         )
 
         save_target_and_output(
-            cropped_image, center_cropped_mask, output, image_path, epoch
+            cropped_image, center_cropped_mask, output, image_path, epoch, is_color
         )
         save_model_as_state_dict(unet_model, state_dict_path, epoch)
 

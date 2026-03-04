@@ -176,16 +176,17 @@ def create_required_directories(model_name):
     return image_path, state_dict_path, loss_path
 
 
-def save_target_and_output(image, target, output, image_path, idx):
+def save_target_and_output(image, target, output, image_path, idx, is_color=False):
 
     display_image_and_mask(
-        image, target, f"{os.path.join(image_path, 'target')}/{idx}.jpg"
+        image, target, f"{os.path.join(image_path, 'target')}/{idx}.jpg", is_color
     )
 
     display_image_and_mask(
         image,
         convert_model_output_to_values(output),
         f"{os.path.join(image_path, 'output')}/{idx}.jpg",
+        is_color
     )
 
 
@@ -325,7 +326,6 @@ def calculate_final_model_accuracy(model, device, test_dataset):
             total_correct += (pred_classes == mask).sum().item()
             total_pixels += mask.numel()
 
-            # IoU per batch
             intersection = (pred_classes & mask).sum().item()
             union = (pred_classes | mask).sum().item()
             total_iou += intersection / union if union > 0 else 1.0
