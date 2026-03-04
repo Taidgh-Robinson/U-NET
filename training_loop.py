@@ -91,11 +91,10 @@ def trainPetUNetADAM(model_name, unet_model, train_dataset, is_color=False):
 """ Does not work YET, no meanginful data learned"""
 
 
-def trainPetUNetSGD(model_name, unet_model):
+def trainPetUNetSGD(model_name, unet_model, train_dataset, is_color=False):
     image_path, state_dict_path, loss_path = create_required_directories(model_name)
     losses = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_dataset, test_dataset = OxfordPetDatasetLoader(2)
     unet_model = unet_model.to(device)
     optimizer = torch.optim.SGD(unet_model.parameters(), lr=0.01, momentum=0.90)
 
