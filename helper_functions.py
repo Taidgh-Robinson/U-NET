@@ -1,11 +1,13 @@
 import matplotlib.pyplot as plt
 import torch
 import math
+from PIL import Image as PILImage
 import os
 import torch.nn as nn
 import pickle
 from random import randrange
 from logger_config import logger
+from torchvision import transforms
 import torchvision.transforms.functional as TF
 import torch.nn.functional as F
 import numpy as np
@@ -350,3 +352,21 @@ def random_transform_image_and_mask(image, mask):
     image = Image(image)
     mask  = Mask(mask)
     return transform(image, mask)
+
+def load_image_as_tensor(image_path, image_scale):
+    image_transform = transforms.Compose([
+        transforms.Lambda(
+            lambda img: TF.resize(
+                img,
+                [img.height * image_scale, img.width * image_scale],
+                interpolation=TF.InterpolationMode.BILINEAR,
+            )
+        ),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5], std=[0.5]),
+    ])
+
+    img = PILImage.open(image_path).convert("RGB")
+    tensor = image_transform(img)
+    tensor = tensor.unsqueeze(0)  # add batch dimension [1, C, H, W]
+    return tensor
