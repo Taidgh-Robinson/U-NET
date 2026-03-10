@@ -20,14 +20,17 @@ if you are on Mac / Linux
 or 
 ```
 uv sync
-source .venv/bin/activate.exe
+./venv/bin/activate.exe
 ```
 if you are on mac. 
 Then you should be able to run any of the commands / files in this repository. 
 
+## Work Done
+- A 1:1 Unet model train on black and white images with Pixel Accuracy of 88.90% and a Mean IoU of 0.6940 is available [here](https://huggingface.co/taidgh-robinson/UNet-Whitepaper/blob/main/full_model_adam)
+- An almost 1:1 UNet model trained on color images with Pixel Accuracy of 89.56% and a Mean IoU of 0.7103 is available [here](https://huggingface.co/taidgh-robinson/UNet-Whitepaper/blob/main/full_model_adam_color_50_epoch)
+
 ## TODO
 
-1. Currently there is no image deformation / modification which the original paper does. This would be a nice to have. 
 2. Some sort of CLI interface to load / test models instead of having to modify main.py directly. 
 3. Gather presentation data like loss graphs.
-4. Update model evaluation loop to get the image with got the best IoU score on and the worst IoU on. 
+4. Update model evaluation loop to get the image with got the best IoU score on and the worst IoU one. 

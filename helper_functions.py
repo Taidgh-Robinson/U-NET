@@ -10,6 +10,9 @@ import torchvision.transforms.functional as TF
 import torch.nn.functional as F
 import numpy as np
 from loss import combined_loss
+from torchvision.transforms import v2
+from torchvision.tv_tensors import Mask, Image
+
 
 def plot_average_loss(
     loss_array, title="Training Loss", xlabel="Iteration", ylabel="Loss", window=500
@@ -186,7 +189,7 @@ def save_target_and_output(image, target, output, image_path, idx, is_color=Fals
         image,
         convert_model_output_to_values(output),
         f"{os.path.join(image_path, 'output')}/{idx}.jpg",
-        is_color
+        is_color,
     )
 
 
@@ -334,6 +337,16 @@ def calculate_final_model_accuracy(model, device, test_dataset):
     pixel_accuracy = total_correct / total_pixels
     mean_iou = total_iou / len(test_dataset)
 
-    print(f"Avg Loss:       {avg_loss:.4f}")
-    print(f"Pixel Accuracy: {pixel_accuracy:.4f}")
-    print(f"Mean IoU:       {mean_iou:.4f}")
+    logger.info(f"Avg Loss:       {avg_loss:.4f}")
+    logger.info(f"Pixel Accuracy: {pixel_accuracy:.4f}")
+    logger.info(f"Mean IoU:       {mean_iou:.4f}")
+
+def random_transform_image_and_mask(image, mask):
+    transform = v2.Compose([
+        v2.RandomHorizontalFlip(p=0.5),
+        v2.RandomRotation(degrees=10),
+    ])
+
+    image = Image(image)
+    mask  = Mask(mask)
+    return transform(image, mask)
