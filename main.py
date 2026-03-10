@@ -60,9 +60,23 @@ def main():
     trainPetUNetADAM('full_model_adam_color_50_epoch', unet_model, train_dataset, True)
     """
 
+
+    """
+    Train color UNet with random deforms
     unet_model = PetUNetColor()
     train_dataset, _ = OxfordPetDatasetLoaderColor(2)
     trainPetUNetADAMWithRandomTransforms('full_model_adam_color_random_transforms_50_epoch', unet_model, train_dataset, True)
+    """
+
+    unet_model = PetUNetColor()
+    train_dataset, test_dataset = OxfordPetDatasetLoaderColor(2)
+    state_dict = torch.load(
+        "model_state_dict/full_model_adam_color_random_transforms_50_epoch/policy_net-49.pth",
+        map_location=device,
+    )
+
+    unet_model.load_state_dict(state_dict)
+    calculate_final_model_accuracy(unet_model, device, test_dataset)
 
 
 if __name__ == "__main__":

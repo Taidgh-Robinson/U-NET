@@ -28,7 +28,7 @@ Then you should be able to run any of the commands / files in this repository.
 ## Work Done
 - A 1:1 Unet model train on black and white images with Pixel Accuracy of 88.90% and a Mean IoU of 0.6940 is available [here](https://huggingface.co/taidgh-robinson/UNet-Whitepaper/blob/main/full_model_adam)
 - An almost 1:1 UNet model trained on color images with Pixel Accuracy of 89.56% and a Mean IoU of 0.7103 is available [here](https://huggingface.co/taidgh-robinson/UNet-Whitepaper/blob/main/full_model_adam_color_50_epoch)
-
+- An almost 1:1 UNet model trained on color images + random deformations with Pixel Accuracy of 90.83% and a Mean IoU of 0.7470 is available [here](https://huggingface.co/taidgh-robinson/UNet-Whitepaper/blob/main/full_model_adam_color_50_epoch_random_transforms.pth)
 ## TODO
 
 2. Some sort of CLI interface to load / test models instead of having to modify main.py directly. 
