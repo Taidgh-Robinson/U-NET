@@ -18,7 +18,7 @@ from helper_functions import (
     save_target_and_output,
     save_model_as_state_dict,
     crop_with_boundaries,
-    random_transform_image_and_mask
+    random_transform_image_and_mask,
 )
 
 # Make CUDA operations deterministic
@@ -89,7 +89,9 @@ def trainPetUNetADAM(model_name, unet_model, train_dataset, is_color=False):
     save_loss_information(losses, loss_path, model_name)
 
 
-def trainPetUNetADAMWithRandomTransforms(model_name, unet_model, train_dataset, is_color=False):
+def trainPetUNetADAMWithRandomTransforms(
+    model_name, unet_model, train_dataset, is_color=False
+):
     image_path, state_dict_path, loss_path = create_required_directories(model_name)
     losses = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -108,9 +110,7 @@ def trainPetUNetADAMWithRandomTransforms(model_name, unet_model, train_dataset, 
             crop_boundaries = generate_random_crop_bounds(image, 572)
             cropped_image = crop_with_boundaries(image, crop_boundaries)
             cropped_mask = crop_with_boundaries(mask, crop_boundaries)
-            center_cropped_mask = TF.center_crop(
-                cropped_mask, output_size=(388, 388)
-            )
+            center_cropped_mask = TF.center_crop(cropped_mask, output_size=(388, 388))
 
             # Oxford pets come as 1: Animal, 2: Background, 3: Border
             # Rework it so 0: Not Animal, 1: Animal
@@ -144,14 +144,14 @@ def trainPetUNetADAMWithRandomTransforms(model_name, unet_model, train_dataset, 
 
     save_loss_information(losses, loss_path, model_name)
 
+
 """ Does not work YET, no meanginful data learned"""
 
 
-def trainPetUNetSGD(model_name, unet_model):
+def trainPetUNetSGD(model_name, unet_model, train_dataset, is_color=False):
     image_path, state_dict_path, loss_path = create_required_directories(model_name)
     losses = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_dataset, test_dataset = OxfordPetDatasetLoader(2)
     unet_model = unet_model.to(device)
     optimizer = torch.optim.SGD(unet_model.parameters(), lr=0.01, momentum=0.90)
 

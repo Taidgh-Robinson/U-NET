@@ -28,7 +28,6 @@ def plot_average_loss(
         x_vals = np.arange(window - 1, len(loss_array))
         plt.plot(x_vals, smoothed)
     else:
-        # Not enough values yet → just plot raw loss
         plt.plot(loss_array)
 
     plt.title(title)
@@ -343,30 +342,36 @@ def calculate_final_model_accuracy(model, device, test_dataset):
     logger.info(f"Pixel Accuracy: {pixel_accuracy:.4f}")
     logger.info(f"Mean IoU:       {mean_iou:.4f}")
 
+
 def random_transform_image_and_mask(image, mask):
-    transform = v2.Compose([
-        v2.RandomHorizontalFlip(p=0.5),
-        v2.RandomRotation(degrees=10),
-    ])
+    transform = v2.Compose(
+        [
+            v2.RandomHorizontalFlip(p=0.5),
+            v2.RandomRotation(degrees=10),
+        ]
+    )
 
     image = Image(image)
-    mask  = Mask(mask)
+    mask = Mask(mask)
     return transform(image, mask)
 
+
 def load_image_as_tensor(image_path, image_scale):
-    image_transform = transforms.Compose([
-        transforms.Lambda(
-            lambda img: TF.resize(
-                img,
-                [img.height * image_scale, img.width * image_scale],
-                interpolation=TF.InterpolationMode.BILINEAR,
-            )
-        ),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5], std=[0.5]),
-    ])
+    image_transform = transforms.Compose(
+        [
+            transforms.Lambda(
+                lambda img: TF.resize(
+                    img,
+                    [img.height * image_scale, img.width * image_scale],
+                    interpolation=TF.InterpolationMode.BILINEAR,
+                )
+            ),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5], std=[0.5]),
+        ]
+    )
 
     img = PILImage.open(image_path).convert("RGB")
     tensor = image_transform(img)
-    tensor = tensor.unsqueeze(0)  # add batch dimension [1, C, H, W]
+    tensor = tensor.unsqueeze(0)
     return tensor

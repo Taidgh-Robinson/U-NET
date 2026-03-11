@@ -1,13 +1,12 @@
-from data_loader import OxfordPetDatasetLoader, OxfordPetDatasetLoaderNoChanges
-from helper_functions import display_image_and_mask, calculate_final_model_accuracy
+from data_loader import OxfordPetDatasetLoader
+from helper_functions import calculate_final_model_accuracy
 from models import PetUNet, PetUNetColor
-from training_loop import generate_random_crop_bounds
 import numpy as np
-from PIL import Image
 import torch
 import random
 from training_loop import trainPetUNetADAM, trainPetUNetADAMWithRandomTransforms
 from data_loader import OxfordPetDatasetLoader, OxfordPetDatasetLoaderColor
+from config import NUM_EPOCHS
 
 # Make CUDA operations deterministic
 torch.backends.cudnn.deterministic = True
@@ -23,55 +22,50 @@ if torch.cuda.is_available():
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # train, test = OxfordPetDatasetLoader(2)
-    # unet_model = PetUNet()
-    # unet_model = unet_model.to(device)   # ← THIS LINE
+    evaluate_color_UNet("model_state_dict.pth", device)
 
-    # trainPetUNetADAM("full_model_adam_50_epoch", unet_model)
-    # state_dict = torch.load("model_state_dict/full_model_adam_50_epoch/policy_net-49.pth", map_location=device)
-    # unet_model.load_state_dict(state_dict)
-
-    # print(calculate_final_model_accuracy(unet_model, device, test))
-
-    """
-    unet_model = PetUNet()
-    train_dataset, test_dataset = OxfordPetDatasetLoader(2)
-    # trainPetUNetADAM('full_model_adam_color_50_epoch', unet_model, train_dataset, True)
-    state_dict = torch.load(
-        "model_state_dict/full_model_adam_50_epoch/policy_net-49.pth",
-        map_location=device,
-    )
-    unet_model.load_state_dict(state_dict)
-    calculate_final_model_accuracy(unet_model, device, test_dataset)
-    """
-
-    """
-    Train white paper UNet:
+def train_white_paper_UNet():
     unet_model = PetUNet()
     train_dataset, _ = OxfordPetDatasetLoader(2)
-    trainPetUNetADAM('full_model_adam', unet_model, train_dataset)
-    
-    """
-
-    """
-    Train color UNet:
-    unet_model = PetUNetColor()
-    train_dataset, _ = OxfordPetDatasetLoaderColor(2)
-    trainPetUNetADAM('full_model_adam_color_50_epoch', unet_model, train_dataset, True)
-    """
+    trainPetUNetADAM("full_model_adam_{NUM_EPOCHS}_epoch", unet_model, train_dataset)
 
 
-    """
-    Train color UNet with random deforms
-    unet_model = PetUNetColor()
-    train_dataset, _ = OxfordPetDatasetLoaderColor(2)
-    trainPetUNetADAMWithRandomTransforms('full_model_adam_color_random_transforms_50_epoch', unet_model, train_dataset, True)
-    """
-
-    unet_model = PetUNetColor()
-    train_dataset, test_dataset = OxfordPetDatasetLoaderColor(2)
+def evaluate_UNet(model_path, device):
+    unet_model = PetUNet()
+    _, test_dataset = OxfordPetDatasetLoader(2)
     state_dict = torch.load(
-        "model_state_dict/full_model_adam_color_random_transforms_50_epoch/policy_net-49.pth",
+        model_path,
+        map_location=device,
+    )
+
+    unet_model.load_state_dict(state_dict)
+    calculate_final_model_accuracy(unet_model, device, test_dataset)
+
+
+def train_color_UNet():
+    unet_model = PetUNetColor()
+    train_dataset, _ = OxfordPetDatasetLoaderColor(2)
+    trainPetUNetADAM(
+        f"full_model_adam_color_{NUM_EPOCHS}_epoch", unet_model, train_dataset, True
+    )
+
+
+def train_color_UNet_with_random_deforms():
+    unet_model = PetUNetColor()
+    train_dataset, _ = OxfordPetDatasetLoaderColor(2)
+    trainPetUNetADAMWithRandomTransforms(
+        f"full_model_adam_color_random_transforms_{NUM_EPOCHS}_epoch",
+        unet_model,
+        train_dataset,
+        True,
+    )
+
+
+def evaluate_color_UNet(model_path, device):
+    unet_model = PetUNetColor()
+    _, test_dataset = OxfordPetDatasetLoaderColor(2)
+    state_dict = torch.load(
+        model_path,
         map_location=device,
     )
 
