@@ -24,6 +24,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     evaluate_color_UNet("model_state_dict.pth", device)
 
+
 def train_white_paper_UNet():
     unet_model = PetUNet()
     train_dataset, _ = OxfordPetDatasetLoader(2)
